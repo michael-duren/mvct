@@ -1,4 +1,4 @@
-package mvc
+package mvct
 
 import (
 	"fmt"

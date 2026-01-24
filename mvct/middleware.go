@@ -1,4 +1,4 @@
-package mvc
+package mvct
 
 // Context provides information about the navigation
 type Context struct {

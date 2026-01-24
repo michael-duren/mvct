@@ -2,6 +2,7 @@ package todoapp
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/michael-duren/bubble-tea-mvc/mvc"
 )
@@ -17,7 +18,7 @@ func main() {
 	app.RegisterController("todo", NewTodosController())
 	if err := app.Run(); err != nil {
 		fmt.Printf("Error: %v\n", err)
-		os.Exti(1)
+		os.Exit(1)
 	}
 	// app.Use()
 }

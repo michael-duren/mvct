@@ -23,20 +23,20 @@ type Controller[M any] interface {
 
 // BaseController provides common functionality
 // and global access to the Application instance
-type BaseController struct {
-	app *Application
+type BaseController[M any] struct {
+	app *Application[M]
 }
 
-func (bc *BaseController) SetApp(app *Application) {
+func (bc *BaseController[M]) SetApp(app *Application[M]) {
 	bc.app = app
 }
 
-func (bc *BaseController) App() *Application {
+func (bc *BaseController[M]) App() *Application[M] {
 	return bc.app
 }
 
 // Navigate changes the current route
-func (bc *BaseController) Navigate(route string) tea.Cmd {
+func (bc *BaseController[M]) Navigate(route string) tea.Cmd {
 	return func() tea.Msg {
 		return NavigateMsg{Route: route}
 	}

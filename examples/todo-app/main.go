@@ -1,6 +1,10 @@
 package todoapp
 
-import "github.com/michael-duren/bubble-tea-mvc/mvc"
+import (
+	"fmt"
+
+	"github.com/michael-duren/bubble-tea-mvc/mvc"
+)
 
 type AppModel struct {
 }
@@ -10,7 +14,11 @@ func main() {
 	app := mvc.NewApplication[*AppModel](mvc.Config{
 		DefaultRoute: "home",
 	}, appModel)
-	// mvc.RegisterController(app, "home", NewHomeController())
+	app.RegisterController("todo", NewTodosController())
+	if err := app.Run(); err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exti(1)
+	}
 	// app.Use()
 }
 
@@ -112,57 +120,6 @@ func main() {
 // }
 //
 // // TodosController
-// type TodosController struct {
-// 	framework.BaseController
-// 	cursor int
-// }
-//
-// func NewTodosController() *TodosController {
-// 	return &TodosController{cursor: 0}
-// }
-//
-// func (tc *TodosController) Init() tea.Cmd {
-// 	return nil
-// }
-//
-// func (tc *TodosController) Update(msg tea.Msg) tea.Cmd {
-// 	model := tc.App().Model().(*AppModel)
-//
-// 	switch msg := msg.(type) {
-// 	case tea.KeyMsg:
-// 		switch msg.String() {
-// 		case "up", "k":
-// 			if tc.cursor > 0 {
-// 				tc.cursor--
-// 			}
-// 		case "down", "j":
-// 			if tc.cursor < len(model.Todos)-1 {
-// 				tc.cursor++
-// 			}
-// 		case "a":
-// 			model.Todos = append(model.Todos, fmt.Sprintf("Todo #%d", len(model.Todos)+1))
-// 		case "esc":
-// 			return tc.Navigate("/home")
-// 		}
-// 	}
-// 	return nil
-// }
-//
-// func (tc *TodosController) View() string {
-// 	model := tc.App().Model().(*AppModel)
-//
-// 	view := "Todos:\n\n"
-// 	for i, todo := range model.Todos {
-// 		cursor := " "
-// 		if i == tc.cursor {
-// 			cursor = ">"
-// 		}
-// 		view += fmt.Sprintf("%s %s\n", cursor, todo)
-// 	}
-//
-// 	view += "\na - Add todo | esc - Back | q - Quit"
-// 	return view
-// }
 //
 // // SettingsController
 // type SettingsController struct {

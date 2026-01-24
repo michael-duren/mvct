@@ -14,7 +14,7 @@ type Application[M any] struct {
 	width          int
 	height         int
 	globalHandlers []GlobalHandler
-	model          *M
+	model          M
 }
 
 // Config holds application configuration
@@ -23,7 +23,7 @@ type Config struct {
 	Settings     map[string]any
 }
 
-func NewApplication[M any](config Config, model *M) *Application[M] {
+func NewApplication[M any](config Config, model M) *Application[M] {
 	app := &Application[M]{
 		router:         NewRouter(),
 		globalHandlers: []GlobalHandler{},
@@ -58,7 +58,7 @@ func (a *Application[M]) Model() any {
 }
 
 // SetModel updates the global model
-func (a *Application[M]) SetModel(model *M) {
+func (a *Application[M]) SetModel(model M) {
 	a.model = model
 }
 

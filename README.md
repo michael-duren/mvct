@@ -1,4 +1,4 @@
-# Bubbletea MVC Framework (BTMVC)
+# MVC Bubbletea (mvct)
 
 > [!WARNING]
 > This project is a work in progress and may not be stable for production use.
@@ -14,7 +14,7 @@ based on the Model-View-Controller (MVC) design pattern.
 
 ## About
 
-BTMVC is a framework designed to help developers build complex TUI applications in Go using the Bubbletea library.
+MVCT is a framework designed to help developers build complex TUI applications in Go using the Bubbletea library.
 Bubble tea is a powerful TUI framework, but as applications grow in complexity, managing state and interactions can become challenging.
 If you're simply building small TUI apps, you might not need this framework. This is more suited for larger applications with multiple views, complex state management, and user interactions.
 
@@ -31,7 +31,7 @@ If you're simply building small TUI apps, you might not need this framework. Thi
 
 ## Installation
 
-You can install the `btmvc` package using go or download from the releases page.
+You can install the `mvct` package using go or download from the releases page.
 
 ```bash
 go install github.com/michael-duren/bubbletea-mvc@latest
@@ -40,5 +40,5 @@ go install github.com/michael-duren/bubbletea-mvc@latest
 After installation, scaffold a new project:
 
 ```bash
-btmvc new my-tui-app
+mvct new my-tui-app
 ```

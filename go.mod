@@ -1,4 +1,4 @@
-module github.com/michael-duren/bubble-tea-mvc
+module github.com/michael-duren/mvct
 
 go 1.25.1
 

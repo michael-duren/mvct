@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/michael-duren/bubble-tea-mvc/mvc"
+	"github.com/michael-duren/mvct"
 )
 
 type AppModel struct {
@@ -12,10 +12,10 @@ type AppModel struct {
 
 func main() {
 	appModel := &AppModel{}
-	app := mvc.NewApplication[*AppModel](mvc.Config{
+	app := mvct.NewApplication[*AppModel](mvct.Config{
 		DefaultRoute: "home",
 	}, appModel)
-	app.RegisterController("todo", NewTodosController())
+	// app.RegisterController("todo", NewTodosController())
 	if err := app.Run(); err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)

@@ -1,4 +1,4 @@
-package todoapp
+package controllers
 
 import (
 	"fmt"

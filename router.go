@@ -9,26 +9,27 @@ import (
 // Route represents a single route
 type Route[M any] struct {
 	Path       string
-	Controller Controller[M]
+	Controller Controller
 }
 
 // Router manages routing between controllers
 type Router struct {
-	routes       map[string]Controller[any]
-	currentRoute string
-	defaultRoute string
-	middleware   []Middleware
+	routes        map[string]Controller
+	currentRoute  string
+	previousRoute string
+	defaultRoute  string
+	middleware    []Middleware
 }
 
 func NewRouter() *Router {
 	return &Router{
-		routes:     make(map[string]Controller[any]),
+		routes:     make(map[string]Controller),
 		middleware: []Middleware{},
 	}
 }
 
 // Register adds a route
-func (r *Router) Register(path string, controller Controller[any]) {
+func (r *Router) Register(path string, controller Controller) {
 	r.routes[path] = controller
 }
 
@@ -44,7 +45,7 @@ func (r *Router) Use(m Middleware) {
 }
 
 // Current returns the current controller
-func (r *Router) Current() Controller[any] {
+func (r *Router) Current() Controller {
 	controller := r.routes[r.currentRoute]
 	if controller == nil && r.defaultRoute != "" {
 		controller = r.routes[r.defaultRoute]
@@ -76,7 +77,7 @@ func (r *Router) Navigate(path string) (tea.Cmd, error) {
 	}
 
 	// Initialize new controller
-	return r.Current().Init(), nil
+	return unwrapCmd(r.Current().Init()), nil
 }
 
 // CurrentRoute returns the current route path

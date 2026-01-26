@@ -2,6 +2,8 @@ package mvct
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -14,7 +16,13 @@ type Application[M any] struct {
 	width          int
 	height         int
 	globalHandlers []GlobalHandler
-	model          M
+	// key handlers are registered via the RegisterKeyHandlers method and are mapped by key string, use convience methods to create
+	// these maps
+	keyHandlers map[string]KeyMsgHandler
+	// message handlers are registered by type - auto-discovered via reflection
+	msgHandlers map[reflect.Type]reflect.Value
+	model       M
+	Errors      []error
 }
 
 // Config holds application configuration
@@ -38,7 +46,7 @@ func NewApplication[M any](config Config, model M) *Application[M] {
 }
 
 // RegisterController adds a controller for a route
-func (a *Application[M]) RegisterController(path string, controller Controller[any]) {
+func (a *Application[M]) RegisterController(path string, controller Controller) {
 	a.router.Register(path, controller)
 }
 
@@ -92,7 +100,8 @@ func (a *Application[M]) GetSetting(s string) (any, error) {
 
 // Init implements tea.Model
 func (a *Application[M]) Init() tea.Cmd {
-	return a.router.Current().Init()
+	cmd := a.router.Current().Init()
+	return unwrapCmd(cmd)
 }
 
 // Update implements tea.Model
@@ -102,27 +111,82 @@ func (a *Application[M]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		a.width = msg.Width
 		a.height = msg.Height
-
 	case tea.KeyMsg:
-		// Run global handlers
 		for _, handler := range a.globalHandlers {
 			if cmd := handler.Handle(msg); cmd != nil {
 				return a, cmd
 			}
 		}
+	}
 
-	case NavigateMsg:
-		cmd, err := a.router.Navigate(msg.Route)
+	wrappedMsg := wrapMsg(msg)
+
+	if navMsg, ok := wrappedMsg.Inner.(NavigateMsg); ok {
+		cmd, err := a.router.Navigate(navMsg.Route)
 		if err != nil {
-			// Could handle error here
+			a.Errors = append(a.Errors, err)
 			return a, nil
 		}
+
+		a.scanMessageHandlers()
 		return a, cmd
 	}
 
-	// Route to current controller
-	cmd := a.router.Current().Update(msg)
-	return a, cmd
+	// local key msgs
+	if keyMsg, ok := wrappedMsg.Inner.(KeyMsg); ok {
+		if handler, exists := a.keyHandlers[keyMsg.Type.String()]; exists {
+			return a, unwrapCmd(handler(keyMsg))
+		}
+	}
+
+	msgType := reflect.TypeOf(wrappedMsg.Inner)
+	if handler, exists := a.msgHandlers[msgType]; exists {
+		results := handler.Call([]reflect.Value{reflect.ValueOf(wrappedMsg.Inner)})
+		if len(results) > 0 && !results[0].IsNil() {
+			return a, unwrapCmd(results[0].Interface().(Cmd))
+		}
+	}
+
+	// Route to current controller via internalUpdate
+	currentController := a.router.Current()
+	if bc, ok := currentController.(interface{ internalUpdate(Msg) Cmd }); ok {
+		cmd := bc.internalUpdate(wrappedMsg)
+		return a, unwrapCmd(cmd)
+	}
+
+	return a, nil
+}
+
+// gets the appropriate handler based on the paramter
+func (a *Application[M]) scanMessageHandlers() {
+	a.keyHandlers = make(map[string]KeyMsgHandler)
+	a.msgHandlers = make(map[reflect.Type]reflect.Value)
+
+	ctlr := a.router.Current()
+	if ctlr == nil {
+		return
+	}
+
+	val := reflect.ValueOf(ctlr)
+	typ := val.Type()
+
+	for i := 0; i < val.NumMethod(); i++ {
+		method := val.Method(i)
+		methodName := typ.Method(i).Name
+		methodType := method.Type()
+
+		if strings.HasPrefix(methodName, "OnKey") {
+			continue
+		}
+
+		if strings.HasPrefix(methodName, "On") {
+			if methodType.NumIn() == 1 && methodType.NumOut() == 1 {
+				msgType := methodType.In(0)
+				a.msgHandlers[msgType] = method
+			}
+		}
+	}
+	ctlr.RegisterKeyHandlers(a.keyHandlers)
 }
 
 // View implements tea.Model

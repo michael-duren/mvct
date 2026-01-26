@@ -1,6 +1,7 @@
 package todoapp
 
 import (
+	"example-todo/controllers"
 	"fmt"
 	"os"
 
@@ -12,15 +13,15 @@ type AppModel struct {
 
 func main() {
 	appModel := &AppModel{}
-	app := mvct.NewApplication[*AppModel](mvct.Config{
+	app := mvct.NewApplication(mvct.Config{
 		DefaultRoute: "home",
 	}, appModel)
+	app.RegisterController("welcome", controllers.NewTodosController())
 	// app.RegisterController("todo", NewTodosController())
 	if err := app.Run(); err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}
-	// app.Use()
 }
 
 // // examples/todo-app/main.go

@@ -1,10 +1,10 @@
 package controllers
 
 import (
+	todoapp "example-todo"
 	"fmt"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/michael-duren/bubble-tea-mvc/mvc"
+	"github.com/michael-duren/mvct"
 )
 
 type TodoModel struct {
@@ -13,7 +13,7 @@ type TodoModel struct {
 }
 
 type TodosController struct {
-	mvc.BaseController
+	mvct.BaseController[todoapp.AppModel]
 	model TodoModel
 }
 
@@ -26,38 +26,17 @@ func NewTodosController() *TodosController {
 	}
 }
 
-func (tc *TodosController) Init() tea.Cmd {
+func (tc *TodosController) Init() mvct.Cmd {
 	return nil
 }
 
-func (tc *TodosController) Update(msg tea.Msg) tea.Cmd {
-	model := tc.App().Model().(*AppModel)
+func (tc *TodosController) Update(msg mvct.Msg) {
 
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "up", "k":
-			if tc.model.Cursor > 0 {
-				tc.model.Cursor--
-			}
-		case "down", "j":
-			if tc.model.Cursor < len(model.Todos)-1 {
-				tc.model.Cursor++
-			}
-		case "a":
-			model.Todos = append(model.Todos, fmt.Sprintf("Todo #%d", len(model.Todos)+1))
-		case "esc":
-			return tc.Navigate("/home")
-		}
-	}
-	return nil
 }
 
 func (tc *TodosController) View() string {
-	model := tc.App().Model().(*AppModel)
-
 	view := "Todos:\n\n"
-	for i, todo := range model.Todos {
+	for i, todo := range tc.model.Todos {
 		cursor := " "
 		if i == tc.model.Cursor {
 			cursor = ">"

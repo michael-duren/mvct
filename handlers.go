@@ -28,5 +28,3 @@ func QuitHandler(keys ...string) GlobalHandler {
 		return nil
 	})
 }
-
-type KeyMsg tea.KeyMsg

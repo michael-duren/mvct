@@ -12,6 +12,11 @@ type Route[M any] struct {
 	Controller Controller
 }
 
+// NavigateMsg signals a route change
+type NavigateMsg struct {
+	Route string
+}
+
 // Router manages routing between controllers
 type Router struct {
 	routes        map[string]Controller

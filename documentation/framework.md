@@ -303,7 +303,7 @@ type KeyMsgHandler func(msg KeyMsg) Cmd
 
 ```
 1. Controller returns NavigateMsg:
-   return func() Msg { return Msg{Inner: NavigateMsg{Route: "/settings"}} }
+   return mvct.Navigate("/welcome")
 
 2. Application receives it in Update:
    if navMsg, ok := wrappedMsg.Inner.(NavigateMsg)
@@ -331,19 +331,3 @@ type KeyMsgHandler func(msg KeyMsg) Cmd
 4. **Type safety** - Generics for models, reflection only where needed
 5. **Composability** - Controllers can have nested routers
 6. **Simplicity** - Minimal interface, framework handles complexity
-
-## What Users Don't See
-
-- Message wrapping/unwrapping
-- Reflection for method scanning
-- Internal routing logic
-- Command conversion between tea.Cmd and mvct.Cmd
-- Handler map management
-
-## What Users Do
-
-1. Implement 4 interface methods
-2. Write handler methods (key handlers + On<MsgType> handlers)
-3. Register key bindings
-4. Return NavigateMsg to change routes
-5. Return other Cmds for async operations

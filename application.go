@@ -22,6 +22,7 @@ type Application[M any] struct {
 	// message handlers are registered by type - auto-discovered via reflection
 	msgHandlers map[reflect.Type]reflect.Value
 	model       M
+	layoutFunc  func(content string, width, height int) string
 	Errors      []error
 }
 
@@ -189,9 +190,18 @@ func (a *Application[M]) scanMessageHandlers() {
 	ctlr.RegisterKeyHandlers(a.keyHandlers)
 }
 
-// View implements tea.Model
 func (a *Application[M]) View() string {
-	return a.router.Current().View()
+	content := a.router.Current().View()
+
+	if a.layoutFunc != nil {
+		return a.layoutFunc(content, a.width, a.height)
+	}
+
+	return content
+}
+
+func (a *Application[M]) SetLayout(fn func(content string, width, height int) string) {
+	a.layoutFunc = fn
 }
 
 func (a *Application[M]) Run() error {

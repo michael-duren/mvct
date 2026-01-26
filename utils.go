@@ -47,3 +47,7 @@ func unwrapCmd(cmd Cmd) tea.Cmd {
 		return msg.Inner
 	}
 }
+
+func Quit() Cmd {
+	return wrapCmd(context.Background(), tea.Quit)
+}

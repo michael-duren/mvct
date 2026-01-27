@@ -2,7 +2,7 @@ package mvct
 
 import tea "github.com/charmbracelet/bubbletea"
 
-type KeyMsg tea.KeyMsg
+type KeyMsg = tea.KeyMsg
 
 // KeyMsgHandler associates a list of keys with a handler function
 type KeyBinding struct {

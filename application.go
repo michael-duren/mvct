@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"reflect"
+	"runtime"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -109,6 +110,7 @@ func (a *Application[M]) GetSetting(s string) (any, error) {
 func (a *Application[M]) Init() tea.Cmd {
 	slog.Debug("Initializing application")
 	cmd := a.router.Current().Init()
+	a.scanMessageHandlers()
 	return unwrapCmd(cmd)
 }
 
@@ -128,6 +130,7 @@ func (a *Application[M]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
+	a.logHandlers()
 
 	wrappedMsg := wrapMsg(msg)
 
@@ -146,7 +149,9 @@ func (a *Application[M]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// local key msgs
 	if keyMsg, ok := wrappedMsg.Inner.(KeyMsg); ok {
-		if handler, exists := a.keyHandlers[keyMsg.Type.String()]; exists {
+		slog.Debug("KeyMsg received: ", "keymsg", keyMsg)
+		a.logHandlers()
+		if handler, exists := a.keyHandlers[keyMsg.String()]; exists {
 			slog.Debug("Executing local key handler", "key", keyMsg.Type.String())
 			return a, unwrapCmd(handler(keyMsg))
 		}
@@ -226,4 +231,24 @@ func (a *Application[M]) Run() error {
 	_, err := p.Run()
 	slog.Info("Application stopped")
 	return err
+}
+
+func (a *Application[M]) logHandlers() {
+	slog.Debug("=== Registered Handlers ===")
+
+	for key, handler := range a.keyHandlers {
+		fnName := runtime.FuncForPC(reflect.ValueOf(handler).Pointer()).Name()
+		slog.Debug("key handler",
+			"key", key,
+			"function", fnName,
+		)
+	}
+
+	for msgType, method := range a.msgHandlers {
+		fnName := runtime.FuncForPC(method.Pointer()).Name()
+		slog.Debug("message handler",
+			"handles", msgType.String(),
+			"method", fnName,
+		)
+	}
 }

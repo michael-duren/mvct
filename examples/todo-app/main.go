@@ -28,6 +28,10 @@ func main() {
 	app.UseGlobalHandler(mvct.QuitHandler("ctrl+c"))
 	app.UseGlobalHandler(mvct.QuitHandler("q"))
 
+	app.UseLogger(mvct.LoggerConfig{
+		Path: "",
+	})
+
 	app.RegisterController(R.Home, controllers.NewTodoController())
 	app.RegisterController(R.Exit, controllers.NewExitController())
 

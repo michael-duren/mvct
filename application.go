@@ -23,7 +23,8 @@ type Application[M any] struct {
 	msgHandlers map[reflect.Type]reflect.Value
 	model       M
 	layoutFunc  func(content string, width, height int) string
-	Errors      []error
+
+	Errors []error
 }
 
 // Config holds application configuration
@@ -107,7 +108,6 @@ func (a *Application[M]) Init() tea.Cmd {
 
 // Update implements tea.Model
 func (a *Application[M]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Handle global messages
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		a.width = msg.Width

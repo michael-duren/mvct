@@ -3,6 +3,7 @@ package controllers
 import (
 	"example-todo/components"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/michael-duren/mvct"
@@ -75,7 +76,7 @@ func (c *TodoController) GetModel() any {
 }
 
 func (c *TodoController) RegisterKeyHandlers(handlers map[string]mvct.KeyMsgHandler) {
-	for k, v := range mvct.Keys(
+	maps.Copy(handlers, mvct.Keys(
 		mvct.Key("q").To(c.onQuit),
 		mvct.Key("j", "down").To(c.onDown),
 		mvct.Key("k", "up").To(c.onUp),
@@ -83,9 +84,7 @@ func (c *TodoController) RegisterKeyHandlers(handlers map[string]mvct.KeyMsgHand
 		mvct.Key("d").To(c.onDelete),
 		mvct.Key("enter").To(c.onEnter),
 		mvct.Key("esc").To(c.onEscape),
-	) {
-		handlers[k] = v
-	}
+	))
 }
 
 func (c *TodoController) onQuit(msg mvct.KeyMsg) mvct.Cmd {

@@ -54,3 +54,7 @@ func (a *Application[M]) UseLogger(config LoggerConfig) error {
 	slog.Info("Logger initialized", "log_file", logFile)
 	return nil
 }
+
+func LogLevel(level log.Level) *log.Level {
+	return &level
+}

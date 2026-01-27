@@ -4,6 +4,7 @@ import (
 	"example-todo/components"
 	"example-todo/controllers"
 
+	"github.com/charmbracelet/log"
 	"github.com/michael-duren/mvct"
 )
 
@@ -29,7 +30,8 @@ func main() {
 	app.UseGlobalHandler(mvct.QuitHandler("q"))
 
 	app.UseLogger(mvct.LoggerConfig{
-		Path: "",
+		Path:     "",
+		LogLevel: mvct.LogLevel(log.DebugLevel),
 	})
 
 	app.RegisterController(R.Home, controllers.NewTodoController())

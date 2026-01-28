@@ -117,20 +117,13 @@ func (a *Application[M]) Init() tea.Cmd {
 // Update implements tea.Model
 func (a *Application[M]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	slog.Debug("Application Update", "msg_type", reflect.TypeOf(msg), "msg", msg)
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		slog.Debug("Window resize", "width", msg.Width, "height", msg.Height)
 		a.width = msg.Width
 		a.height = msg.Height
-	case tea.KeyMsg:
-		for _, handler := range a.globalHandlers {
-			if cmd := handler.Handle(msg); cmd != nil {
-				slog.Debug("Global handler handled key", "header", reflect.TypeOf(handler), "key", msg.String())
-				return a, cmd
-			}
-		}
 	}
-	a.logHandlers()
 
 	wrappedMsg := wrapMsg(msg)
 
@@ -142,37 +135,48 @@ func (a *Application[M]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.Errors = append(a.Errors, err)
 			return a, nil
 		}
-
 		a.scanMessageHandlers()
+		slog.Debug("Navigation successful", "new_route", navMsg.Route)
+		a.logHandlers()
 		return a, cmd
 	}
 
-	// local key msgs
-	if keyMsg, ok := wrappedMsg.Inner.(KeyMsg); ok {
-		slog.Debug("KeyMsg received: ", "keymsg", keyMsg)
-		a.logHandlers()
-		if handler, exists := a.keyHandlers[keyMsg.String()]; exists {
-			slog.Debug("Executing local key handler", "key", keyMsg.Type.String())
-			return a, unwrapCmd(handler(keyMsg))
-		}
-	}
-
+	// Check ctlr custom msg types
 	msgType := reflect.TypeOf(wrappedMsg.Inner)
 	if handler, exists := a.msgHandlers[msgType]; exists {
-		slog.Debug("Executing reflected message handler", "msg_type", msgType)
+		slog.Debug("Calling controller message handler", "msg_type", msgType.String())
 		results := handler.Call([]reflect.Value{reflect.ValueOf(wrappedMsg.Inner)})
 		if len(results) > 0 && !results[0].IsNil() {
-			return a, unwrapCmd(results[0].Interface().(Cmd))
+			cmd := results[0].Interface().(Cmd)
+			if cmd != nil {
+				slog.Debug("Controller message handler returned cmd")
+				return a, unwrapCmd(cmd)
+			}
+		}
+		slog.Debug("Controller message handler returned nil, continuing...")
+	}
+
+	// Check ctlr key handlers
+	if keyMsg, ok := wrappedMsg.Inner.(KeyMsg); ok {
+		slog.Debug("KeyMsg received", "key", keyMsg.String())
+		if handler, exists := a.keyHandlers[keyMsg.String()]; exists {
+			slog.Debug("Calling controller key handler", "key", keyMsg.String())
+			return a, unwrapCmd(handler(keyMsg))
+		}
+		slog.Debug("No controller key handler found", "key", keyMsg.String())
+	}
+
+	// If nothing hits, run globalHandlers
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		for _, handler := range a.globalHandlers {
+			if cmd := handler.Handle(keyMsg); cmd != nil {
+				slog.Debug("Global handler handled key", "handler", reflect.TypeOf(handler), "key", keyMsg.String())
+				return a, cmd
+			}
 		}
 	}
 
-	// Route to current controller via internalUpdate
-	currentController := a.router.Current()
-	if bc, ok := currentController.(interface{ internalUpdate(Msg) Cmd }); ok {
-		cmd := bc.internalUpdate(wrappedMsg)
-		return a, unwrapCmd(cmd)
-	}
-
+	slog.Debug("No handler found for message", "msg_type", msgType.String())
 	return a, nil
 }
 

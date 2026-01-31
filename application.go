@@ -145,23 +145,31 @@ func (a *Application[M]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	msgType := reflect.TypeOf(wrappedMsg.Inner)
 	if handler, exists := a.msgHandlers[msgType]; exists {
 		slog.Debug("Calling controller message handler", "msg_type", msgType.String())
-		results := handler.Call([]reflect.Value{reflect.ValueOf(wrappedMsg.Inner)})
-		if len(results) > 0 && !results[0].IsNil() {
-			cmd := results[0].Interface().(Cmd)
-			if cmd != nil {
-				slog.Debug("Controller message handler returned cmd")
-				return a, unwrapCmd(cmd)
-			}
+		cmdResult := a.callReflectedFunc(handler, wrappedMsg)
+		if cmdResult.Success {
+			return a, *cmdResult.Value
 		}
+
 		slog.Debug("Controller message handler returned nil, continuing...")
 	}
 
 	// Check ctlr key handlers
 	if keyMsg, ok := wrappedMsg.Inner.(KeyMsg); ok {
+		var cmds []tea.Cmd
+		if handler, exists := a.msgHandlers[reflect.TypeOf(keyMsg)]; exists {
+			cmdResult := a.callReflectedFunc(handler, wrappedMsg)
+			if cmdResult.Success {
+				cmds = append(cmds, *cmdResult.Value)
+			}
+		}
 		slog.Debug("KeyMsg received", "key", keyMsg.String())
 		if handler, exists := a.keyHandlers[keyMsg.String()]; exists {
-			slog.Debug("Calling controller key handler", "key", keyMsg.String())
-			return a, unwrapCmd(handler(keyMsg))
+			cmds = append(cmds, unwrapCmd(handler(keyMsg)))
+		}
+		if len(cmds) > 0 {
+			return a, tea.Batch(
+				cmds...,
+			)
 		}
 		slog.Debug("No controller key handler found", "key", keyMsg.String())
 	}
@@ -178,6 +186,16 @@ func (a *Application[M]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	slog.Debug("No handler found for message", "msg_type", msgType.String())
 	return a, nil
+}
+
+func (a *Application[M]) callReflectedFunc(handler reflect.Value, msg Msg) *Result[*tea.Cmd] {
+	results := handler.Call([]reflect.Value{reflect.ValueOf(msg.Inner)})
+	if len(results) > 0 && !results[0].IsNil() {
+		cmd := results[0].Interface().(Cmd)
+		unwrapped := unwrapCmd(cmd)
+		return NewResult(&unwrapped, true)
+	}
+	return NewResult[*tea.Cmd](nil, false)
 }
 
 // gets the appropriate handler based on the paramter
@@ -198,10 +216,6 @@ func (a *Application[M]) scanMessageHandlers() {
 		method := val.Method(i)
 		methodName := typ.Method(i).Name
 		methodType := method.Type()
-
-		if strings.HasPrefix(methodName, "OnKey") {
-			continue
-		}
 
 		if strings.HasPrefix(methodName, "On") {
 			if methodType.NumIn() == 1 && methodType.NumOut() == 1 {

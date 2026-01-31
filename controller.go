@@ -42,3 +42,15 @@ func Navigate(route string) Cmd {
 		}
 	}
 }
+
+type Result[T any] struct {
+	Success bool
+	Value   T
+}
+
+func NewResult[T any](val T, success bool) *Result[T] {
+	return &Result[T]{
+		Value:   val,
+		Success: success,
+	}
+}

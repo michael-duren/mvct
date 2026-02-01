@@ -10,7 +10,7 @@ func NewExitController() *ExitController {
 	return &ExitController{}
 }
 
-func (c *ExitController) Init() mvct.Cmd {
+func (c *ExitController) Init(handlers mvct.KeyHandlers) mvct.Cmd {
 	return mvct.Quit()
 }
 
@@ -20,7 +20,4 @@ func (c *ExitController) View() string {
 
 func (c *ExitController) GetModel() any {
 	return nil
-}
-
-func (c *ExitController) RegisterKeyHandlers(handlers map[string]mvct.KeyMsgHandler) {
 }

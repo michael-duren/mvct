@@ -13,11 +13,14 @@ The main orchestrator that manages routing, global state, and message flow.
 **Fields:**
 
 - `router *Router` - Routes between controllers
+- `settings map[string]any` - Application-wide configuration
 - `model M` - Global application model
 - `globalHandlers []GlobalHandler` - Handlers that run before routing (e.g., quit on Ctrl+C)
-- `keyHandlers map[string]KeyMsgHandler` - Current controller's registered key handlers
+- `keyHandlers KeyHandlers` - Current controller's registered key handlers
 - `msgHandlers map[reflect.Type]reflect.Value` - Current controller's On<MsgType> methods (discovered via reflection)
 - `width, height int` - Terminal dimensions
+- `layoutFunc func(string, int, int) string` - Global layout wrapper
+- `Errors []error` - Runtime errors list
 
 **Responsibilities:**
 
@@ -36,6 +39,7 @@ Manages navigation between controllers.
 
 - `routes map[string]Controller` - Path → Controller mapping
 - `currentRoute string` - Active route
+- `previousRoute string` - Previously active route
 - `defaultRoute string` - Fallback route
 - `middleware []Middleware` - Pre-navigation hooks
 
@@ -61,10 +65,8 @@ Minimal interface users implement.
 
 ```go
 type Controller interface {
-    Init() Cmd
+    Init(handlers KeyHandlers) Cmd
     View() string
-    GetModel() any
-    RegisterKeyHandlers(handlers map[string]KeyMsgHandler)
 }
 ```
 
@@ -75,7 +77,8 @@ type HomeController struct {
     model HomeModel
 }
 
-func (c *HomeController) Init() mvct.Cmd {
+func (c *HomeController) Init(handlers mvct.KeyHandlers) mvct.Cmd {
+    c.RegisterKeyHandlers(handlers)
     return nil
 }
 
@@ -83,11 +86,8 @@ func (c *HomeController) View() string {
     return renderHomeView(c.model)
 }
 
-func (c *HomeController) GetModel() any {
-    return c.model
-}
-
-func (c *HomeController) RegisterKeyHandlers(handlers map[string]mvct.KeyMsgHandler) {
+// Optional helper method (not required by interface)
+func (c *HomeController) RegisterKeyHandlers(handlers mvct.KeyHandlers) {
     handlers["q"] = c.onQuit
     handlers["enter"] = c.onEnter
 }
@@ -129,9 +129,11 @@ tea.Msg → wrapMsg() → mvct.Msg
 
 ```
 if NavigateMsg:
-  router.Navigate(route)
-  scanCurrentControllerHandlers()
-  return Init() cmd
+  router.Navigate(route, keyHandlers)
+  // Router calls Init(keyHandlers) on new controller
+  scanReflectedHandlers()
+  return InitCmd
+
 ```
 
 ### 5. Key Handler Dispatch
@@ -164,16 +166,20 @@ mvct.Cmd → unwrapCmd() → tea.Cmd
 
 ### Key Handlers (Manual)
 
-User explicitly maps keys to handlers in RegisterKeyHandlers:
+User explicitly maps keys to handlers in `Init` or a helper method:
 
 ```go
-func (c *HomeController) RegisterKeyHandlers(handlers map[string]mvct.KeyMsgHandler) {
+func (c *HomeController) Init(handlers mvct.KeyHandlers) mvct.Cmd {
+    c.RegisterKeyHandlers(handlers)
+    return nil
+}
+
+func (c *HomeController) RegisterKeyHandlers(handlers mvct.KeyHandlers) {
     handlers["q"] = c.onQuit
-    handlers["j"] = c.moveDown
 }
 ```
 
-Application stores these in `keyHandlers` map.
+Application passes the shared `keyHandlers` map to the controller during initialization.
 
 ### Message Handlers (Auto-discovered)
 
@@ -194,6 +200,22 @@ func (c *HomeController) OnWindowSizeMsg(msg mvct.WindowSizeMsg) mvct.Cmd {
 5. Maps `reflect.TypeOf(SomeMsg)` → method
 
 Application stores these in `msgHandlers` map.
+
+### Middleware
+
+Middleware can intercept navigation events.
+
+```go
+type Context struct {
+    From string
+    To   string
+    Data map[string]any
+}
+
+type Middleware interface {
+    Handle(ctx *Context) bool // return false to block
+}
+```
 
 ## Helper Functions
 
@@ -293,8 +315,8 @@ type KeyMsgHandler func(msg KeyMsg) Cmd
    app.Run()
 
 5. Bubble Tea calls Init():
-   router.Current().Init()
-   scanCurrentControllerHandlers()
+   router.Current().Init(app.keyHandlers)
+   scanReflectedHandlers()
 
 6. Message loop begins
 ```
@@ -312,12 +334,11 @@ type KeyMsgHandler func(msg KeyMsg) Cmd
    - Validate route exists
    - Run middleware
    - Update currentRoute
-   - Return new controller's Init()
+   - Return new controller's Init(handlers)
 
 4. Application scans new controller:
-   scanCurrentControllerHandlers()
-   - Clear old keyHandlers and msgHandlers
-   - Call controller.RegisterKeyHandlers()
+   scanReflectedHandlers()
+   - Clear old msgHandlers
    - Reflect for On<MsgType> methods
 
 5. New controller is active

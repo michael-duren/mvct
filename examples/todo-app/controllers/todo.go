@@ -32,7 +32,8 @@ func NewTodoController() *TodoController {
 	}
 }
 
-func (c *TodoController) Init() mvct.Cmd {
+func (c *TodoController) Init(handlers mvct.KeyHandlers) mvct.Cmd {
+	c.RegisterKeyHandlers(handlers)
 	return nil
 }
 
@@ -75,7 +76,7 @@ func (c *TodoController) GetModel() any {
 	return c.model
 }
 
-func (c *TodoController) RegisterKeyHandlers(handlers map[string]mvct.KeyMsgHandler) {
+func (c *TodoController) RegisterKeyHandlers(handlers mvct.KeyHandlers) {
 	maps.Copy(handlers, mvct.Keys(
 		mvct.Key("q").To(c.onQuit),
 		mvct.Key("j", "down").To(c.onDown),
@@ -143,7 +144,6 @@ func (c *TodoController) onEscape(msg mvct.KeyMsg) mvct.Cmd {
 	return nil
 }
 
-// Handle text input when adding
 func (c *TodoController) OnKeyMsg(msg mvct.KeyMsg) mvct.Cmd {
 	if c.model.adding {
 		// Handle typing

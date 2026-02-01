@@ -8,21 +8,15 @@ import (
 
 type KeyMsgHandler func(msg KeyMsg) Cmd
 
-// Controller is the base interface all controllers must implement
-// M is the model type associated with the controller
-// that should be passed to the View method
+// Controller is the interface all controllers must implement
 type Controller interface {
 	// Init is called when the controller is first activated
-	Init() Cmd
+	// the caller can register the key handlers they want to be used
+	// while on this route
+	Init(handlers KeyHandlers) Cmd
 
 	// View renders the controller's view
 	View() string
-
-	// Returns the model associated with the controller
-	GetModel() any
-
-	// Registers key handlers specific to this controller
-	RegisterKeyHandlers(map[string]KeyMsgHandler)
 }
 
 // Msg wraps the tea.Msg with additional context
@@ -40,17 +34,5 @@ func Navigate(route string) Cmd {
 		return Msg{
 			Inner: NavigateMsg{Route: route},
 		}
-	}
-}
-
-type Result[T any] struct {
-	Success bool
-	Value   T
-}
-
-func NewResult[T any](val T, success bool) *Result[T] {
-	return &Result[T]{
-		Value:   val,
-		Success: success,
 	}
 }

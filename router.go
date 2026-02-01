@@ -59,7 +59,7 @@ func (r *Router) Current() Controller {
 }
 
 // Navigate changes the current route
-func (r *Router) Navigate(path string) (tea.Cmd, error) {
+func (r *Router) Navigate(handlers KeyHandlers, path string) (tea.Cmd, error) {
 	if _, ok := r.routes[path]; !ok {
 		return nil, fmt.Errorf("route not found: %s", path)
 	}
@@ -82,7 +82,7 @@ func (r *Router) Navigate(path string) (tea.Cmd, error) {
 	}
 
 	// Initialize new controller
-	return unwrapCmd(r.Current().Init()), nil
+	return unwrapCmd(r.Current().Init(handlers)), nil
 }
 
 // CurrentRoute returns the current route path

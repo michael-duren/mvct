@@ -5,10 +5,11 @@ import (
 	"log/slog"
 	"reflect"
 	"runtime"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+type KeyHandlers = map[string]KeyMsgHandler
 
 // Application is the main framework orchestrator
 // M is the global model type
@@ -18,9 +19,9 @@ type Application[M any] struct {
 	width          int
 	height         int
 	globalHandlers []GlobalHandler
-	// key handlers are registered via the RegisterKeyHandlers method and are mapped by key string, use convience methods to create
-	// these maps
-	keyHandlers map[string]KeyMsgHandler
+	// key handlers are registered during the init method when the application
+	// starts or when a route changes
+	keyHandlers KeyHandlers
 	// message handlers are registered by type - auto-discovered via reflection
 	msgHandlers map[reflect.Type]reflect.Value
 	model       M
@@ -109,122 +110,9 @@ func (a *Application[M]) GetSetting(s string) (any, error) {
 // Init implements tea.Model
 func (a *Application[M]) Init() tea.Cmd {
 	slog.Debug("Initializing application")
-	cmd := a.router.Current().Init()
+	cmd := a.router.Current().Init(a.keyHandlers)
 	a.scanMessageHandlers()
 	return unwrapCmd(cmd)
-}
-
-// Update implements tea.Model
-func (a *Application[M]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	slog.Debug("Application Update", "msg_type", reflect.TypeOf(msg), "msg", msg)
-
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		slog.Debug("Window resize", "width", msg.Width, "height", msg.Height)
-		a.width = msg.Width
-		a.height = msg.Height
-	}
-
-	wrappedMsg := wrapMsg(msg)
-
-	if navMsg, ok := wrappedMsg.Inner.(NavigateMsg); ok {
-		slog.Info("Processing navigation", "route", navMsg.Route)
-		cmd, err := a.router.Navigate(navMsg.Route)
-		if err != nil {
-			slog.Error("Navigation failed", "error", err)
-			a.Errors = append(a.Errors, err)
-			return a, nil
-		}
-		a.scanMessageHandlers()
-		slog.Debug("Navigation successful", "new_route", navMsg.Route)
-		a.logHandlers()
-		return a, cmd
-	}
-
-	// Check ctlr custom msg types
-	msgType := reflect.TypeOf(wrappedMsg.Inner)
-	if handler, exists := a.msgHandlers[msgType]; exists {
-		slog.Debug("Calling controller message handler", "msg_type", msgType.String())
-		cmdResult := a.callReflectedFunc(handler, wrappedMsg)
-		if cmdResult.Success {
-			return a, *cmdResult.Value
-		}
-
-		slog.Debug("Controller message handler returned nil, continuing...")
-	}
-
-	// Check ctlr key handlers
-	if keyMsg, ok := wrappedMsg.Inner.(KeyMsg); ok {
-		var cmds []tea.Cmd
-		if handler, exists := a.msgHandlers[reflect.TypeOf(keyMsg)]; exists {
-			cmdResult := a.callReflectedFunc(handler, wrappedMsg)
-			if cmdResult.Success {
-				cmds = append(cmds, *cmdResult.Value)
-			}
-		}
-		slog.Debug("KeyMsg received", "key", keyMsg.String())
-		if handler, exists := a.keyHandlers[keyMsg.String()]; exists {
-			cmds = append(cmds, unwrapCmd(handler(keyMsg)))
-		}
-		if len(cmds) > 0 {
-			return a, tea.Batch(
-				cmds...,
-			)
-		}
-		slog.Debug("No controller key handler found", "key", keyMsg.String())
-	}
-
-	// If nothing hits, run globalHandlers
-	if keyMsg, ok := msg.(tea.KeyMsg); ok {
-		for _, handler := range a.globalHandlers {
-			if cmd := handler.Handle(keyMsg); cmd != nil {
-				slog.Debug("Global handler handled key", "handler", reflect.TypeOf(handler), "key", keyMsg.String())
-				return a, cmd
-			}
-		}
-	}
-
-	slog.Debug("No handler found for message", "msg_type", msgType.String())
-	return a, nil
-}
-
-func (a *Application[M]) callReflectedFunc(handler reflect.Value, msg Msg) *Result[*tea.Cmd] {
-	results := handler.Call([]reflect.Value{reflect.ValueOf(msg.Inner)})
-	if len(results) > 0 && !results[0].IsNil() {
-		cmd := results[0].Interface().(Cmd)
-		unwrapped := unwrapCmd(cmd)
-		return NewResult(&unwrapped, true)
-	}
-	return NewResult[*tea.Cmd](nil, false)
-}
-
-// gets the appropriate handler based on the paramter
-func (a *Application[M]) scanMessageHandlers() {
-	slog.Debug("Scanning message handlers")
-	a.keyHandlers = make(map[string]KeyMsgHandler)
-	a.msgHandlers = make(map[reflect.Type]reflect.Value)
-
-	ctlr := a.router.Current()
-	if ctlr == nil {
-		return
-	}
-
-	val := reflect.ValueOf(ctlr)
-	typ := val.Type()
-
-	for i := 0; i < val.NumMethod(); i++ {
-		method := val.Method(i)
-		methodName := typ.Method(i).Name
-		methodType := method.Type()
-
-		if strings.HasPrefix(methodName, "On") {
-			if methodType.NumIn() == 1 && methodType.NumOut() == 1 {
-				msgType := methodType.In(0)
-				a.msgHandlers[msgType] = method
-			}
-		}
-	}
-	ctlr.RegisterKeyHandlers(a.keyHandlers)
 }
 
 func (a *Application[M]) View() string {

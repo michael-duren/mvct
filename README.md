@@ -42,3 +42,5 @@ After installation, scaffold a new project:
 ```bash
 mvct new my-tui-app
 ```
+
+Check out the [documentation](documentation/framework.md) for more information.

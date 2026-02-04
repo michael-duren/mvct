@@ -19,11 +19,12 @@ type NavigateMsg struct {
 
 // Router manages routing between controllers
 type Router struct {
-	routes        map[string]Controller
-	currentRoute  string
-	previousRoute string
-	defaultRoute  string
-	middleware    []Middleware
+	routes       map[string]Controller
+	currentRoute string
+	// currently don't have use case for this may come back and enable it
+	// previousRoute string
+	defaultRoute string
+	middleware   []Middleware
 }
 
 func NewRouter() *Router {

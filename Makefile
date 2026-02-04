@@ -1,4 +1,7 @@
 test:
+	@echo "Linting"
+	@go tool staticcheck .
+
 	@echo "Testing"
 	
 	@go test -v ./...

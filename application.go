@@ -110,8 +110,8 @@ func (a *Application[M]) GetSetting(s string) (any, error) {
 // Init implements tea.Model
 func (a *Application[M]) Init() tea.Cmd {
 	slog.Debug("Initializing application")
-	cmd := a.router.Current().Init(a.keyHandlers)
 	a.scanMessageHandlers()
+	cmd := a.router.Current().Init(a.keyHandlers)
 	return unwrapCmd(cmd)
 }
 
